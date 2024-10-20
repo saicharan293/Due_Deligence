@@ -73,15 +73,16 @@ function populateOptions() {
       return response.json();
     })
     .then((data) => {
+        console.log('options', data)
       const optionsList = document.getElementById("optionsList");
       optionsList.innerHTML = ""; // Clear previous options
 
-      data.forEach((option) => {
+      data.forEach((d) => {
         const optionDiv = document.createElement("div");
         optionDiv.className = "form-check";
         optionDiv.innerHTML = `
-                        <input type="checkbox" class="form-check-input" id="${option}" onclick="updateSelectAll()">
-                        <label class="form-check-label" for="${option}">${option}</label>
+                        <input type="checkbox" class="form-check-input" id="${d.name}" onclick="updateSelectAll()">
+                        <label class="form-check-label" for="${d.name}">${d.name}</label>
                     `;
         optionsList.appendChild(optionDiv);
       });
@@ -139,6 +140,7 @@ document.getElementById("evaluationForm").addEventListener("submit", function (e
 
     const category = document.getElementById("customCategory").value.trim() || document.getElementById("category").value;
     const subcategory = document.getElementById("customSubcategory").value.trim() || document.getElementById("subcategory").value;
+    const tableName = `${category.replace(' ', '_')}_${subcategory.replace(' ', '_')}`;
 
     // Ensure category and subcategory are selected before building the table
     if (category && subcategory) {
@@ -155,9 +157,12 @@ document.getElementById("evaluationForm").addEventListener("submit", function (e
         })
         .then(response => response.json())
         .then(data => {
-            console.log(data.message);
+            console.log('data form submission',data);
             // Fetch and display the new data as required
-            fetchNewTableData(category, subcategory); // Function to fetch and display the new table data
+            displayTableData(tableName,data); 
+            // Function to fetch and display the new table data
+            initializeTableActions(tableName,data);
+
         })
         .catch(error => console.error("Error:", error));
 
@@ -169,52 +174,92 @@ document.getElementById("evaluationForm").addEventListener("submit", function (e
 });
 
 // Function to fetch new table data from the database
-function fetchNewTableData(category, subcategory, assets) {
+function fetchNewTableData(category, subcategory) {
     const tableName = `${category.replace(' ', '_')}_${subcategory.replace(' ', '_')}`;
 
     fetch(`/get_table_data/${tableName}`)
     .then(response => response.json())
     .then(data => {
-        console.log('data came',data,data.response)
-        displayTableData(data); // Function to display the fetched data in a table
+        console.log('data came',data)
+        displayTableData(data);
+         // Function to display the fetched data in a table
+        // initializeTableActions(tableName);
     })
     .catch(error => console.error("Error fetching table data:", error));
 }
 
 // Function to display the fetched data in a table
-function displayTableData(data) {
-    console.log('data in display table data',data)
+function displayTableData(tableName,data) {
+    // console.log('data in display table data',data)
     const tablesContainer = document.getElementById('tablesContainer');
     const newSection = document.createElement("div");
-    newSection.className = "mt-3";
-
+    
+    newSection.innerHTML=`
+            <div class="table-title" style="padding-inline: 60px">
+                <div class="row">
+                    <div class="col-10"><h2>${tableName}</h2></div>
+                    <div class="col-2">
+                        <button type="button" class="btn btn-info add-new"><i class="fa fa-plus"></i> Add New</button>
+                    </div>
+                </div>
+            </div>
+        `;
     const newTable = document.createElement("table");
     newTable.className = "container table table-bordered mt-3 assets-table"; // Bootstrap styling
     newTable.style.width = "100%";
+    
+    newSection.className = "mt-3";
 
     const thead = document.createElement("thead");
-    thead.innerHTML = `
-        <tr>
-            <th>Asset Name</th>
-            <th>Action</th>
-        </tr>
-    `;
+    const headerRow = document.createElement("tr");
+
+    // console.log('data 0',data[0]);
+    // console.log('data 1',data[1]);
+
+    if (data.length > 0) {
+        data.forEach(key => {
+            const th = document.createElement("th");
+            th.textContent = key; 
+            headerRow.appendChild(th);
+        });
+    }
+    const actionTh = document.createElement("th");
+    actionTh.textContent = "Action";
+    headerRow.appendChild(actionTh);
+    
+    thead.appendChild(headerRow);
+    newTable.appendChild(thead);
+    // thead.innerHTML = `
+    //     <tr>
+    //         <th>Asset Name</th>
+    //         <th>Action</th>
+    //     </tr>
+    // `;
 
     // Append thead to the table
-    newTable.appendChild(thead);
+    // newTable.appendChild(thead);
 
+    // Create a row for each asset
+    
     const tbody = document.createElement("tbody");
-    data.forEach(asset => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-            <td>${asset.asset_name}</td>
-            <td>
-                <a class="edit" title="Edit" data-toggle="tooltip"><i class="fa fa-pencil"></i></a>
-                <a class="delete" title="Delete" data-toggle="tooltip"><i class="fa fa-trash"></i></a>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
+    // data.forEach(asset => {
+    //     const row = document.createElement("tr");
+        
+    //         const td = document.createElement("td");
+    //         td.textContent = asset; 
+    //         row.appendChild(td);
+
+     
+    //     const actionTd = document.createElement("td");
+    //     actionTd.innerHTML = `
+    //         <a class="edit" title="Edit" data-toggle="tooltip"><i class="fa fa-pencil"></i></a>
+    //         <a class="delete" title="Delete" data-toggle="tooltip"><i class="fa fa-trash"></i></a>
+    //     `;
+    //     row.appendChild(actionTd);
+
+    //     tbody.appendChild(row);
+    // });
+    
     newTable.appendChild(tbody);
     
     // Append the new table to the container
@@ -224,24 +269,26 @@ function displayTableData(data) {
 
 
 // Refactored initializeTableActions to work with the newly created table
-function initializeTableActions(table) {
+function initializeTableActions(table,data) {
+    console.log('init tab act', table)
+
     $(document).ready(function () {
         var actions = `
             <a class="add-asset" title="Add" data-toggle="tooltip"><i class="fa fa-plus"></i></a>
             <a class="edit" title="Edit" data-toggle="tooltip" style="display: inline;"><i class="fa fa-pencil"></i></a>
             <a class="delete" title="Delete" data-toggle="tooltip"><i class="fa fa-trash"></i></a>
         `;
-
         // Add new row on add-new button click
-        $(table).on("click", ".add-new", function () {
+
+        $(table).on("click", ".btn-info.add-new", function () {
             $(this).attr("disabled", "disabled");
             var index = $(table).find("tbody tr:last-child").index();
             var row = '<tr>';
-
+            console.log('add new is clicked');
             // Loop through savedOptions to dynamically create <td> for each option
-            savedOptions.forEach(function(option, i) {
+            data.forEach(function(option, i) {
                 // You might want to exclude the last element (if savedOptions.length - 1 is required)
-                if (i < savedOptions.length) {
+                if (i < data.length) {
                     row += `<td><input type="text" class="form-control" name="${option}" id="${option}"></td>`;
                 }
             });
@@ -453,8 +500,8 @@ function addCustomOption() {
             const optionDiv = document.createElement("div");
             optionDiv.className = "form-check";
             optionDiv.innerHTML = `
-                <input type="checkbox" class="form-check-input" id="${optionValue}">
-                <label class="form-check-label" for="${optionValue}">${optionValue}</label>
+                <input type="checkbox" class="form-check-input" id="${data.name}">
+                <label class="form-check-label" for="${data.name}">${data.name}</label>
             `;
             optionsList.appendChild(optionDiv);
 

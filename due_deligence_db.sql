@@ -29,5 +29,15 @@ INSERT INTO subcategories (name, category_id) VALUES
 SELECT * FROM public.subcategories;
 
 SELECT * FROM public.Electrical_System_Electrical_System;
+SELECT * FROM public.Building_Services_and_Amenities_Swimming_pool;
 
 SELECT * FROM public.assets;
+
+DROP TABLE public.Building_Services_and_Amenities_Swimming_pool cascade;
+DROP TABLE public.Electrical_System_Electrical_System cascade;
+
+
+
+
+
+

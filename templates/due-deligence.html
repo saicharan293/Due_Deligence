@@ -71,10 +71,10 @@
                 <select id="subcategory" name="subcategory" class="form-control" onchange="populateOptions()">
                     <option value="">Select Sub Category</option>
                     {% for category, subs in subcategories.items() %}
-                            {% for sub in subs %}
-                                <option value="{{ sub }}">{{ sub }}</option>
-                            {% endfor %}
+                        {% for sub in subs %}
+                            <option value="{{ sub }}">{{ sub }}</option>
                         {% endfor %}
+                    {% endfor %}
                     </select>
                 </select>
                 <div style="display: flex; align-items: center; margin-top: .5rem;">

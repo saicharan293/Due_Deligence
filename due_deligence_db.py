@@ -9,7 +9,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Configure the PostgreSQL database
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:Admin@localhost:5432/DueDeligenceDb'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:admin@localhost:5432/DueDeligenceDb'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize SQLAlchemy
@@ -17,7 +17,7 @@ db = SQLAlchemy(app)
 
 # Function to create the database if it doesn't exist
 def create_database():
-    conn = psycopg2.connect(dbname='postgres', user='postgres', password='Admin', host='localhost')
+    conn = psycopg2.connect(dbname='postgres', user='postgres',port=5432, password='admin', host='localhost')
     conn.autocommit = True
     cursor = conn.cursor()
     
@@ -42,24 +42,22 @@ class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(500), nullable=False)
 
+    # Define a relationship to subcategories
+    subcategories = db.relationship('Subcategory', backref='category', lazy=True)
+
 # Define Subcategory Model
 class Subcategory(db.Model):
     __tablename__ = 'subcategories'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(500), nullable=False)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
-    
-    category = db.relationship('Category', backref=db.backref('subcategories', lazy=True))
 
-# Define Asset Model
 class Asset(db.Model):
-    __tablename__ = 'assets'
+    __tablename__ = 'assets'  # Table name in the database
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(500), nullable=False)
-    subcategory_id = db.Column(db.Integer, db.ForeignKey('subcategories.id'), nullable=False)
-    
-    subcategory = db.relationship('Subcategory', backref=db.backref('assets', lazy=True))
-
+    type = db.Column(db.String(100), nullable=True)
 
 # Create the tables
 with app.app_context():
@@ -74,15 +72,10 @@ def indexPage():
     
     # Prepare subcategories for rendering
     subcategory_data = {category.name: [sub.name for sub in category.subcategories] for category in categories}
-    
-    # Prepare assets for each subcategory
-    assets_data = {}
-    for category in categories:
-        assets_data[category.name] = {
-            sub.name: [asset.name for asset in sub.assets] for sub in category.subcategories
-        }
 
-    return render_template('due-deligence.html', categories=category_names, subcategories=subcategory_data, assets=assets_data)
+    # Fetch all assets common to all categories
+    all_assets = Asset.query.all()
+    return render_template('due-deligence.html', categories=category_names, subcategories=subcategory_data, assets=all_assets)
 
 
 @app.route('/get_subcategories', methods=['POST'])
@@ -92,12 +85,44 @@ def get_subcategories():
     subcategories = [sub.name for sub in category.subcategories] if category else []
     return jsonify(subcategories)
 
-@app.route('/get_assets', methods=['POST'])
+@app.route('/get_assets', methods=['GET','POST'])
 def get_assets():
-    subcategory_name = request.json['subcategory']
-    subcategory = Subcategory.query.filter_by(name=subcategory_name).first()
-    assets_list = [asset.name for asset in subcategory.assets] if subcategory else []
-    return jsonify(assets_list)
+    # Asset names to check and insert if they don't exist
+    asset_names = [
+        'Location',
+        'Snag Report',
+        'Photo',
+        'Action',
+        'Remarks'
+    ]
+
+    # Check if assets already exist
+    existing_assets = Asset.query.filter(Asset.name.in_(asset_names)).all()
+    existing_asset_names = {asset.name for asset in existing_assets}
+
+    # Insert default asset names if they don't exist
+    for name in asset_names:
+        if name not in existing_asset_names:
+            new_asset = Asset(name=name)  # You can specify type if needed
+            db.session.add(new_asset)
+
+    db.session.commit()  # Commit the changes to the database
+
+    # Fetch all assets after insertion
+    assets = Asset.query.all()
+    print('get_assets',assets)
+    assets_data = []
+
+    for asset in assets:
+        assets_data.append({
+            'id': asset.id,
+            'name': asset.name,
+            'type': asset.type,
+        })
+    print('asset_Data',assets_data)
+
+    return jsonify(assets_data)  # Return the asset data
+
 
 from flask import jsonify, request
 from sqlalchemy.exc import IntegrityError  # Import for catching integrity errors
@@ -198,7 +223,6 @@ def submit_form():
     
     # Create a new table name dynamically
     table_name = f"{category.replace(' ', '_')}_{subcategory.replace(' ', '_')}"
-    
     # Check if the table already exists
     # Use session to ensure rollback in case of errors
     session = sessionmaker(bind=db.engine)()
@@ -226,7 +250,8 @@ def submit_form():
 
             # Commit changes
             session.commit()
-            return jsonify({"message": "Table created and assets inserted successfully!"}), 201
+
+            return jsonify(assets), 201
 
         except IntegrityError:
             session.rollback()  # Rollback in case of an error
@@ -258,7 +283,8 @@ def get_table_data(table_name):
         # Use double quotes for case sensitivity
         assets_query = session.execute(text(f'SELECT * FROM "{table_name}"'))
         assets = [{"asset_name": asset[1]} for asset in assets_query]
-
+        for asset in assets:
+            print('asset in get_table_Data', asset)
         return jsonify(assets)
 
     except Exception as e:
@@ -303,7 +329,7 @@ def create_table(table_name, category, subcategory):
         print('2 assets are',assets)
 
         session.commit()
-        return jsonify({"message": "Table created and assets inserted successfully!"},assets), 201
+        return jsonify(assets), 201
 
     except IntegrityError:
         session.rollback()  # Rollback in case of an error
