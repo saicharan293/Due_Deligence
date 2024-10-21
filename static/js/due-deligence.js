@@ -81,11 +81,17 @@ function populateOptions() {
         const optionDiv = document.createElement("div");
         optionDiv.className = "form-check";
         optionDiv.innerHTML = `
-                        <input type="checkbox" class="form-check-input" id="${d.name}" onclick="updateSelectAll()">
+                        <input type="checkbox" class="form-check-input" name="assets" id="${d.name}" value="${d.name}" onclick="updateSelectAll()">
                         <label class="form-check-label" for="${d.name}">${d.name}</label>
                     `;
         optionsList.appendChild(optionDiv);
       });
+      document.querySelectorAll('input[name="assets"]').forEach((checkbox) => {
+        checkbox.addEventListener('change', () => {
+            const selectedAssets = Array.from(document.querySelectorAll('input[name="assets"]:checked')).map(asset => asset.value);
+            console.log('Selected assets:', selectedAssets);
+        });
+    });
     })
     .catch((error) => {
       console.error("Error fetching options:", error);
@@ -140,7 +146,10 @@ document.getElementById("evaluationForm").addEventListener("submit", function (e
 
     const category = document.getElementById("customCategory").value.trim() || document.getElementById("category").value;
     const subcategory = document.getElementById("customSubcategory").value.trim() || document.getElementById("subcategory").value;
-    const tableName = `${category.replace(' ', '_')}_${subcategory.replace(' ', '_')}`;
+    // Replace all spaces with underscores globally
+    const tableName = `${category.replace(/\s+/g, '_')}_${subcategory.replace(/\s+/g, '_')}`;
+    const selectedAssets = Array.from(document.querySelectorAll('input[name="assets"]:checked')).map(asset => asset.value);
+    console.log('selected assets',selectedAssets)
 
     // Ensure category and subcategory are selected before building the table
     if (category && subcategory) {
@@ -153,53 +162,40 @@ document.getElementById("evaluationForm").addEventListener("submit", function (e
             body: JSON.stringify({
                 category: category,
                 subcategory: subcategory,
+                tableName:tableName,
+                selectedAssets: selectedAssets
             }),
         })
         .then(response => response.json())
         .then(data => {
-            console.log('data form submission',data);
+            console.log('data form submission',data[1],data[0]);
             // Fetch and display the new data as required
-            displayTableData(tableName,data); 
+            displayTableData(data[1],data[0]); 
             // Function to fetch and display the new table data
-            initializeTableActions(tableName,data);
+            initializeTableActions(data[1],data[0]);
 
         })
         .catch(error => console.error("Error:", error));
 
         // Reset the form after creating the table
-        document.querySelector("form#evaluationForm").reset();
+        document.querySelector("#evaluationForm").reset();
     } else {
         alert("Please select a category and subcategory.");
     }
 });
 
-// Function to fetch new table data from the database
-function fetchNewTableData(category, subcategory) {
-    const tableName = `${category.replace(' ', '_')}_${subcategory.replace(' ', '_')}`;
-
-    fetch(`/get_table_data/${tableName}`)
-    .then(response => response.json())
-    .then(data => {
-        console.log('data came',data)
-        displayTableData(data);
-         // Function to display the fetched data in a table
-        // initializeTableActions(tableName);
-    })
-    .catch(error => console.error("Error fetching table data:", error));
-}
 
 // Function to display the fetched data in a table
 function displayTableData(tableName,data) {
-    // console.log('data in display table data',data)
     const tablesContainer = document.getElementById('tablesContainer');
     const newSection = document.createElement("div");
-    
+    newSection.classList.add("mt-3", tableName);
     newSection.innerHTML=`
             <div class="table-title" style="padding-inline: 60px">
                 <div class="row">
                     <div class="col-10"><h2>${tableName}</h2></div>
                     <div class="col-2">
-                        <button type="button" class="btn btn-info add-new"><i class="fa fa-plus"></i> Add New</button>
+                        <button type="button" class="btn btn-info add-new"><i class="fa fa-plus"></i> Add Row</button>
                     </div>
                 </div>
             </div>
@@ -208,7 +204,7 @@ function displayTableData(tableName,data) {
     newTable.className = "container table table-bordered mt-3 assets-table"; // Bootstrap styling
     newTable.style.width = "100%";
     
-    newSection.className = "mt-3";
+    newSection.className = `mt-3 ${tableName}`;
 
     const thead = document.createElement("thead");
     const headerRow = document.createElement("tr");
@@ -224,44 +220,13 @@ function displayTableData(tableName,data) {
         });
     }
     const actionTh = document.createElement("th");
-    actionTh.textContent = "Action";
+    actionTh.textContent = "Action buttons";
     headerRow.appendChild(actionTh);
     
     thead.appendChild(headerRow);
     newTable.appendChild(thead);
-    // thead.innerHTML = `
-    //     <tr>
-    //         <th>Asset Name</th>
-    //         <th>Action</th>
-    //     </tr>
-    // `;
-
-    // Append thead to the table
-    // newTable.appendChild(thead);
-
-    // Create a row for each asset
-    
     const tbody = document.createElement("tbody");
-    // data.forEach(asset => {
-    //     const row = document.createElement("tr");
-        
-    //         const td = document.createElement("td");
-    //         td.textContent = asset; 
-    //         row.appendChild(td);
-
-     
-    //     const actionTd = document.createElement("td");
-    //     actionTd.innerHTML = `
-    //         <a class="edit" title="Edit" data-toggle="tooltip"><i class="fa fa-pencil"></i></a>
-    //         <a class="delete" title="Delete" data-toggle="tooltip"><i class="fa fa-trash"></i></a>
-    //     `;
-    //     row.appendChild(actionTd);
-
-    //     tbody.appendChild(row);
-    // });
-    
     newTable.appendChild(tbody);
-    
     // Append the new table to the container
     newSection.appendChild(newTable);
     tablesContainer.appendChild(newSection);
@@ -271,6 +236,7 @@ function displayTableData(tableName,data) {
 // Refactored initializeTableActions to work with the newly created table
 function initializeTableActions(table,data) {
     console.log('init tab act', table)
+    const tableClass = `.${table}`
 
     $(document).ready(function () {
         var actions = `
@@ -280,9 +246,9 @@ function initializeTableActions(table,data) {
         `;
         // Add new row on add-new button click
 
-        $(table).on("click", ".btn-info.add-new", function () {
+        $(tableClass).on("click",  `.add-new`, function () {
             $(this).attr("disabled", "disabled");
-            var index = $(table).find("tbody tr:last-child").index();
+            var index = $(tableClass).find("tbody tr:last-child").index();
             var row = '<tr>';
             console.log('add new is clicked');
             // Loop through savedOptions to dynamically create <td> for each option
@@ -295,35 +261,63 @@ function initializeTableActions(table,data) {
         
             // Append the action buttons <td>
             row += `<td>${actions}</td></tr>`;
-            $(table).find("tbody").append(row);
-            $(table).find("tbody tr").eq(index + 1).find(".add-asset, .edit").toggle();
+            $(tableClass).find("tbody").append(row);
+            $(tableClass).find("tbody tr").eq(index + 1).find(".add-asset, .edit").toggle();
             // $('[data-toggle="tooltip"]').tooltip();
         }); 
 
         // Add row on add-asset button click
-        $(table).on("click", ".add-asset", function () {
+        $(tableClass).on("click", `.add-asset`, function () {
             var empty = false;
             var input = $(this).parents("tr").find('input[type="text"]');
+            var rowData = {};
+
             input.each(function () {
                 if (!$(this).val()) {
                     $(this).addClass("error");
                     empty = true;
                 } else {
                     $(this).removeClass("error");
+                    rowData[$(this).attr("name")] = $(this).val();
+                    console.log('row data',rowData)
+                    console.log('table name',table)
                 }
             });
             $(this).parents("tr").find(".error").first().focus();
+            
             if (!empty) {
-                input.each(function () {
-                    $(this).parent("td").html($(this).val());
+                $.ajax({
+                    url: "/save_row_data",  // Replace with your backend route
+                    method: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify({
+                        tableName: table,  // Send the extracted table name
+                        rowData: rowData       // Send the row data
+                    }),
+                    success: function (response) {
+                        if (response.success) {
+                            console.log(response.success)
+                            // On success, replace inputs with plain text
+                            input.each(function () {
+                                $(this).parent("td").html($(this).val());
+                            });
+                            // Toggle add and edit buttons visibility
+                            $(this).parents("tr").find(".add-asset, .edit").toggle();
+                            $(".add-new").removeAttr("disabled");
+                        } else {
+                            alert("Failed to save data: " + response.message);
+                        }
+                    }.bind(this), // Bind the current context
+                    error: function (xhr, status, error) {
+                        console.error("Error:", error);
+                        alert("An error occurred while saving data.");
+                    }
                 });
-                $(this).parents("tr").find(".add-asset, .edit").toggle();
-                $(".add-new").removeAttr("disabled");
             }
         });
 
         // Edit row on edit button click
-        $(table).on("click", ".edit", function () {
+        $(tableClass).on("click", ` .edit`, function () {
             $(this).parents("tr").find("td:not(:last-child)").each(function () {
                 $(this).html('<input type="text" class="form-control" value="' + $(this).text() + '">');
             });
@@ -332,7 +326,7 @@ function initializeTableActions(table,data) {
         });
 
         // Delete row on delete button click
-        $(table).on("click", ".delete", function () {
+        $(tableClass).on("click", ` .delete`, function () {
             $(this).parents("tr").remove();
             $(".add-new").removeAttr("disabled");
         });

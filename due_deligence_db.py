@@ -4,12 +4,14 @@ import psycopg2
 from flask_cors import CORS
 from sqlalchemy import text,inspect
 from sqlalchemy.exc import IntegrityError
+from datetime import datetime
+
 
 app = Flask(__name__)
 CORS(app)
 
 # Configure the PostgreSQL database
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:admin@localhost:5432/DueDeligenceDb'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:Admin@localhost:5432/DueDeligenceDb'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize SQLAlchemy
@@ -17,7 +19,7 @@ db = SQLAlchemy(app)
 
 # Function to create the database if it doesn't exist
 def create_database():
-    conn = psycopg2.connect(dbname='postgres', user='postgres',port=5432, password='admin', host='localhost')
+    conn = psycopg2.connect(dbname='postgres', user='postgres',port=5432, password='Admin', host='localhost')
     conn.autocommit = True
     cursor = conn.cursor()
     
@@ -74,8 +76,8 @@ def indexPage():
     subcategory_data = {category.name: [sub.name for sub in category.subcategories] for category in categories}
 
     # Fetch all assets common to all categories
-    all_assets = Asset.query.all()
-    return render_template('due-deligence.html', categories=category_names, subcategories=subcategory_data, assets=all_assets)
+    # all_assets = Asset.query.all()
+    return render_template('due-deligence.html', categories=category_names, subcategories=subcategory_data)
 
 
 @app.route('/get_subcategories', methods=['POST'])
@@ -103,14 +105,15 @@ def get_assets():
     # Insert default asset names if they don't exist
     for name in asset_names:
         if name not in existing_asset_names:
-            new_asset = Asset(name=name)  # You can specify type if needed
+            new_asset = Asset(name=name)  
             db.session.add(new_asset)
 
-    db.session.commit()  # Commit the changes to the database
+    db.session.commit()  
+    # Commit the changes to the database
 
     # Fetch all assets after insertion
     assets = Asset.query.all()
-    print('get_assets',assets)
+    # print('get_assets',assets)
     assets_data = []
 
     for asset in assets:
@@ -119,7 +122,7 @@ def get_assets():
             'name': asset.name,
             'type': asset.type,
         })
-    print('asset_Data',assets_data)
+    # print('asset_Data',assets_data)
 
     return jsonify(assets_data)  # Return the asset data
 
@@ -220,9 +223,11 @@ from sqlalchemy.orm import sessionmaker
 def submit_form():
     category = request.json.get('category', '').strip()
     subcategory = request.json.get('subcategory', '').strip()
-    
+    selected_assets = request.json.get('selectedAssets', [])
+    print('seleceted_assets',selected_assets)
     # Create a new table name dynamically
-    table_name = f"{category.replace(' ', '_')}_{subcategory.replace(' ', '_')}"
+    current_time = datetime.now().strftime("%H%M%S")  # Format: "HHMMSS"
+    table_name = f"{category.replace(' ', '_')}_{subcategory.replace(' ', '_')}_{current_time}"
     # Check if the table already exists
     # Use session to ensure rollback in case of errors
     session = sessionmaker(bind=db.engine)()
@@ -232,26 +237,24 @@ def submit_form():
     else:
         try:
             # Create the new table
-            session.execute(text(f"""
+            column_definitions = ", ".join([f'"{asset}" VARCHAR(255)' if ' ' in asset else f"{asset} VARCHAR(255)" for asset in selected_assets])
+            create_table_sql = f"""
                 CREATE TABLE {table_name} (
                     id SERIAL PRIMARY KEY,
-                    asset_name VARCHAR(255) NOT NULL
+                    {column_definitions}
                 )
-            """))
-            print(f"Creating table: {table_name}")
+            """
+            session.execute(text(create_table_sql))
+            print(f"Creating table: {table_name} and columns are {column_definitions}")
 
-            # Fetch assets from the existing assets table
-            assets_query = session.execute(text("SELECT name FROM assets"))
-            assets = [asset[0] for asset in assets_query]
-
-            # Insert assets into the newly created table
-            for asset in assets:
-                session.execute(text(f"INSERT INTO {table_name} (asset_name) VALUES (:asset_name)"), {"asset_name": asset})
-
-            # Commit changes
+            
             session.commit()
 
-            return jsonify(assets), 201
+            # Insert assets into the newly created table
+            # for asset in selected_assets:
+            #     session.execute(text(f"INSERT INTO {table_name} (asset_name) VALUES (:asset_name)"), {"asset_name": asset})
+            # Fetch assets from the existing assets table
+            return jsonify(selected_assets,table_name), 201
 
         except IntegrityError:
             session.rollback()  # Rollback in case of an error
@@ -262,36 +265,6 @@ def submit_form():
             return jsonify({"message": "Failed to create table or insert assets", "error": str(e)}), 500
         finally:
             session.close()  # Ensure session is closed
-
-@app.route('/get_table_data/<table_name>', methods=['GET'])
-def get_table_data(table_name):
-    # Get category and subcategory from query parameters
-    category = request.args.get('category')
-    subcategory = request.args.get('subcategory')
-
-    # Create an inspector to check the database
-    inspector = inspect(db.engine)
-
-    # Check if the table exists
-    if table_name not in inspector.get_table_names():
-        # If the table does not exist, create it
-        return create_table(table_name, category, subcategory)
-
-    # Fetch the data from the table
-    session = sessionmaker(bind=db.engine)()
-    try:
-        # Use double quotes for case sensitivity
-        assets_query = session.execute(text(f'SELECT * FROM "{table_name}"'))
-        assets = [{"asset_name": asset[1]} for asset in assets_query]
-        for asset in assets:
-            print('asset in get_table_Data', asset)
-        return jsonify(assets)
-
-    except Exception as e:
-        print(f"Error fetching table data: {str(e)}")  # Log the error for debugging
-        return jsonify({"message": "Failed to fetch table data", "error": str(e)}), 500
-    finally:
-        session.close()  # Ensure session is closed
 
 def create_table(table_name, category, subcategory):
     # Create the new table
@@ -340,6 +313,36 @@ def create_table(table_name, category, subcategory):
         return jsonify({"message": "Failed to create table or insert assets", "error": str(e)}), 500
     finally:
         session.close()  # Ensure session is closed
+
+@app.route('/save_row_data', methods=['POST'])
+def save_row_data():
+    data = request.json
+    table_name = data.get('tableName')
+    row_data = data.get('rowData')
+    print('table name is ', table_name, 'and row data is ', row_data)
+
+    # Construct the SQL insert statement
+    # Use double quotes for column names to handle spaces
+    columns = ', '.join([f'{key}' for key in row_data.keys()])  # Double quotes for column names
+    values = ', '.join([f"'{value}'" for value in row_data.values()])  # Use single quotes for string values
+    print('columns are', columns, 'values are', values)
+
+    # Create the insert SQL query
+    insert_sql = f"INSERT INTO {table_name} ({columns}) VALUES ({values})"
+
+    # Execute the insert statement
+    session = sessionmaker(bind=db.engine)()
+    try:
+        session.execute(text(insert_sql))
+        session.commit()
+        print('success message')
+        return jsonify({"success": True}), 201
+    except Exception as e:
+        session.rollback()
+        print('failed insert:', e)  # Log the error message
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        session.close()
 
 if __name__ == '__main__':
     app.run(debug=True)
