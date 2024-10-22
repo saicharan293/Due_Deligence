@@ -344,5 +344,32 @@ def save_row_data():
     finally:
         session.close()
 
+@app.route('/delete_row', methods=['DELETE'])
+def delete_row():
+    data = request.json
+    row_id = data.get('id')  # Get the row ID from the request
+
+    if not row_id:
+        return jsonify({"success": False, "message": "Row ID is required"}), 400
+
+    # Replace 'your_table_name' with the actual table name you want to delete from
+    table_name = data.get('tableName')
+    
+    # Construct the SQL delete statement
+    delete_sql = f"DELETE FROM {table_name} WHERE id = :id"
+
+    # Execute the delete statement
+    session = sessionmaker(bind=db.engine)()
+    try:
+        session.execute(text(delete_sql), {"id": row_id})
+        session.commit()
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        session.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        session.close()
+
+
 if __name__ == '__main__':
     app.run(debug=True)

@@ -13,7 +13,10 @@ body {
   position: relative;
 }
 
-
+.imp{
+  color: red;
+  font-family: 'Times New Roman', Times, serif;
+}
 
 /* .navbar {
   background-color: #343a40;
@@ -43,6 +46,7 @@ body {
 
 .submit-div{
   text-align: center;
+  margin-top: 10px;
 }
 .div-btn-add{
   position: relative;
@@ -84,11 +88,59 @@ footer{
   border-radius: 5px ;
 }
 
-.assets-group{
+.count-value-error {
+  margin-top: 0px;
+  margin-bottom: 10px;
+}
+
+.screen-name{
+  width: 100%;
+}
+.count-group{
+  margin-bottom: 0;
+}
+.error {
+  color: red;
+  display: block;
+  height: 12px;
+  margin-top: 2px;
+  margin-bottom: 5px;
+  padding: 1px;
+}
+
+.noerror {
+  display: block;
+  height: 12px;
+  margin-top: 2px;
+  margin-bottom: 5px;
+  padding: 1px;
+}
+.count-group{
   display: flex;
-  justify-content: space-evenly;
+  justify-content: space-between;
   align-items: center;
 }
+
+#countData{
+  /* border: 0; */
+  border-color: #bfc0c2;
+  outline-color: #bfc0c2;
+  /* border-radius: 5px; */
+  width: 50%;
+  border-radius: 5px;
+}
+
+.editable-column{
+    padding-inline: 5px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+/* .assets-group{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+} */
 
 table {
   
@@ -119,14 +171,18 @@ table {
 }
 
 .table-title {
-  padding-bottom: 10px;
+  padding-inline: 60px;
+  display: flex;
   margin: 0 0 10px;
 }
 .table-title h2 {
   margin: 6px 0 0;
   font-size: 22px;
 }
-.table-title .add-new {
+.col-2{
+  display: flex;
+}
+.table-title .add-new,.delete-table {
   float: right;
   height: 30px;
   font-weight: bold;
@@ -135,6 +191,12 @@ table {
   min-width: 100px;
   border-radius: 50px;
   line-height: 13px;
+}
+.table-title .delete-table{
+  min-width: 110px;
+}
+.row{
+  padding-inline: 35px;
 }
 .table-title .add-new i {
   margin-right: 4px;

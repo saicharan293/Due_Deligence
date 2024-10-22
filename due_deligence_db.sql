@@ -28,13 +28,13 @@ INSERT INTO subcategories (name, category_id) VALUES
 
 SELECT * FROM public.subcategories;
 
-SELECT * FROM public.Electrical_System_Electrical_System_192637;
+SELECT * FROM public.Electrical_System_Electrical_System_104511;
 SELECT * FROM public.Building_Services_and_Amenities_Swimming_pool_155831;
 
 SELECT * FROM public.assets;
 
 DROP TABLE public.Building_Services_and_Amenities_Swimming_pool_155831 cascade;
-DROP TABLE public.Electrical_System_Electrical_System_192338 cascade;
+DROP TABLE public.Electrical_System_Electrical_System_104511 cascade;
 DROP TABLE public.Security_System_CCTV cascade;
 DROP TABLE public.Security_System_Intercom_systems cascade;
 

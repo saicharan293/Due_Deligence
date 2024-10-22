@@ -140,99 +140,236 @@ function saveOptions() {
 }
 // Function to initialize tooltips for all elements with data-toggle="tooltip"
 
+function showError(selector, message) {
+    const errorElement = document.querySelector(selector);
+    errorElement.classList.add("error");
+    errorElement.innerText = message;
+    errorElement.style.display = "block";
+  }
+  
+  function removeError(selector) {
+    const errorElement = document.querySelector(selector);
+    errorElement.classList.remove("error");
+    errorElement.innerText = "";
+    errorElement.style.display = "none";
+  }
+
+
+document.getElementById("category").addEventListener("change", function () {
+    removeError('.department-error'); // Remove department error when the dropdown is changed
+});
+
+document.querySelector('.screen-name').addEventListener("input", function () {
+    removeError('.screen-error'); // Remove screen name error when the user starts typing
+});
+
+document.querySelector('.count-data').addEventListener("input", function () {
+    removeError('.count-error'); 
+});
+
 
 document.getElementById("evaluationForm").addEventListener("submit", function (event) {
     event.preventDefault();
 
     const category = document.getElementById("customCategory").value.trim() || document.getElementById("category").value;
-    const subcategory = document.getElementById("customSubcategory").value.trim() || document.getElementById("subcategory").value;
-    // Replace all spaces with underscores globally
-    const tableName = `${category.replace(/\s+/g, '_')}_${subcategory.replace(/\s+/g, '_')}`;
-    const selectedAssets = Array.from(document.querySelectorAll('input[name="assets"]:checked')).map(asset => asset.value);
-    console.log('selected assets',selectedAssets)
-
-    // Ensure category and subcategory are selected before building the table
-    if (category && subcategory) {
-        // Send data to the server
-        fetch("/submit_form", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                category: category,
-                subcategory: subcategory,
-                tableName:tableName,
-                selectedAssets: selectedAssets
-            }),
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('data form submission',data[1],data[0]);
-            // Fetch and display the new data as required
-            displayTableData(data[1],data[0]); 
-            // Function to fetch and display the new table data
-            initializeTableActions(data[1],data[0]);
-
-        })
-        .catch(error => console.error("Error:", error));
-
-        // Reset the form after creating the table
+    const screenName = document.querySelector('.screen-name').value.trim();
+    const subcategory = document.getElementById("subcategory").value.trim() || document.getElementById("subcategory").value;
+    const countData = document.querySelector('.count-data').value.trim();
+    // let isValid = true;
+    if(formValidation()){
+        var tableName="";
+        if(subcategory){
+            tableName=`${category.replace(/\s+/g, '_')}_${subcategory.replace(/\s+/g, '_')}_${screenName.replace(/\s+/g, '_')}`;
+        } else{
+            tableName=`${category.replace(/\s+/g, '_')}_${screenName.replace(/\s+/g, '_')}`;
+        }
+        tableCreation(tableName,countData);
         document.querySelector("#evaluationForm").reset();
-    } else {
-        alert("Please select a category and subcategory.");
     }
+    // formValidation(isValid)
+    // Reset the form after creating the table
 });
 
+document.querySelector(".reset-btn").addEventListener('click', function (event ){
+    event.preventDefault();
+    console.log('reset started')
+    removeError('.department-error')
+    removeError('.count-error')
+    removeError('.screen-error')
+    document.querySelector("#evaluationForm").reset();
+})
 
-// Function to display the fetched data in a table
-function displayTableData(tableName,data) {
+function formValidation(){
+    const category = document.getElementById("customCategory").value.trim() || document.getElementById("category").value;
+    const screenName = document.querySelector('.screen-name').value.trim();
+    const countData = document.querySelector('.count-data').value.trim();
+    let isValid = true;
+    // Ensure category and subcategory are selected before building the table
+    
+    console.log('entering form')
+    if (!category ) {
+        // Send data to the server
+        showError('.department-error', 'Please select department');
+        isValid = false;
+    } else {
+        removeError('.department-error');
+    }
+    if (screenName === ""){
+        console.log('screen name error')
+        showError('.screen-error', "Please enter screen name");
+        isValid = false
+    } else {
+        removeError('.screen-error');
+    }
+    if (countData == 0){
+        console.log('count data error')
+        showError('.count-error', "Please enter valid count value");
+        isValid = false
+    } else {
+        removeError('.count-error');
+    }
+    
+    return isValid;
+}
+
+
+function tableCreation(tableName, count) {
     const tablesContainer = document.getElementById('tablesContainer');
     const newSection = document.createElement("div");
     newSection.classList.add("mt-3", tableName);
-    newSection.innerHTML=`
+    newSection.innerHTML = `
             <div class="table-title" style="padding-inline: 60px">
                 <div class="row">
                     <div class="col-10"><h2>${tableName}</h2></div>
-                    <div class="col-2">
-                        <button type="button" class="btn btn-info add-new"><i class="fa fa-plus"></i> Add Row</button>
-                        <button type="button" class="btn btn-danger delete-table"><i class="fa fa-minus"></i> Delete Table</button>
-                    </div>
                 </div>
             </div>
         `;
     const newTable = document.createElement("table");
     newTable.className = "container table table-bordered mt-3 assets-table"; // Bootstrap styling
     newTable.style.width = "100%";
-    
-    newSection.className = `mt-3 ${tableName}`;
 
     const thead = document.createElement("thead");
     const headerRow = document.createElement("tr");
-
-    // console.log('data 0',data[0]);
-    // console.log('data 1',data[1]);
-
-    if (data.length > 0) {
-        data.forEach(key => {
-            const th = document.createElement("th");
-            th.textContent = key; 
-            headerRow.appendChild(th);
-        });
-    }
-    const actionTh = document.createElement("th");
-    actionTh.textContent = "Action buttons";
-    headerRow.appendChild(actionTh);
     
+    // Create columns with editable feature
+    if (count > 0) {
+        for (let i = 1; i <= count; i++) {
+            const th = document.createElement("th");
+            const columnText = `Column${i}`;
+
+            // Make column name and add edit button as HTML
+            th.innerHTML = `<span class="editable-column">${columnText}</span>
+                <a class="edit" title="Edit" data-toggle="tooltip" style="display: inline;">
+                <i class="fa fa-pencil"></i></a>`;
+            th.style.position = "relative";
+            th.addEventListener('click', makeEditable); // Add event listener for editable column
+            headerRow.appendChild(th);
+        }
+    }
+
     thead.appendChild(headerRow);
     newTable.appendChild(thead);
+
+    // Create a row for dynamic dropdown and input type selection
     const tbody = document.createElement("tbody");
+    const dataRow = document.createElement("tr");
+
+    // First column: Dropdown for selecting input type
+    const inputTypeCell = document.createElement("td");
+    inputTypeCell.innerHTML = `
+        <select class="form-control input-type-selector">
+            <option value="select">Select</option>
+            <option value="textbox">Textbox</option>
+            <option value="textarea">Textarea</option>
+            <option value="date">Date</option>
+            <option value="dropdown">Dropdown</option>
+        </select>`;
+    dataRow.appendChild(inputTypeCell);
+
+    for (let i = 1; i < count; i++) {
+        const dynamicInputCell = document.createElement("td");
+        dynamicInputCell.innerHTML = '';  // Initially empty
+        dataRow.appendChild(dynamicInputCell);
+    }
+
+    // Append the row to the table body
+    tbody.appendChild(dataRow);
     newTable.appendChild(tbody);
+
     // Append the new table to the container
     newSection.appendChild(newTable);
     tablesContainer.appendChild(newSection);
+
+    // Add event listener to the dropdown to dynamically change the second column
+    inputTypeCell.querySelector('.input-type-selector').addEventListener('change', function () {
+        const selectedType = this.value;
+        if (selectedType === 'select') {
+            dynamicInputCell.innerHTML = '';  // Keep it empty if 'Select' is chosen
+        } else {
+            // updateSecondColumn(dynamicInputCell, selectedType);
+            for (let i = 1; i < count; i++) {
+                const cell = dataRow.cells[i]; // Get each cell from the second column onwards
+                updateSecondColumn(cell, selectedType);
+            }
+        }
+    });
 }
 
+// Function to make the column names editable
+function makeEditable(event) {
+    const th = event.currentTarget;
+    const columnText = th.querySelector('.editable-column');
+    const editButton = th.querySelector('.edit');
+    
+    // Check if the column is already being edited
+    if (columnText.isContentEditable) {
+        return;
+    }
+
+    // Make column content editable and focus on it
+    columnText.contentEditable = "true";
+    columnText.focus();
+
+    // Save on blur (clicking outside) or pressing 'Enter'
+    columnText.addEventListener('blur', () => saveColumnName(columnText));
+    columnText.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            columnText.blur();
+        }
+    });
+}
+
+// Function to save the new column name
+function saveColumnName(columnText) {
+    columnText.contentEditable = "false"; // Disable contentEditable
+    // Optionally: Send the new column name to the backend if needed
+}
+
+// Function to update the second column based on the selected input type
+function updateSecondColumn(dynamicInputCell, selectedType) {
+    let newInput;
+    switch (selectedType) {
+        case 'textbox':
+            newInput = '<input type="text" class="form-control dynamic-input" placeholder="Input here">';
+            break;
+        case 'textarea':
+            newInput = '<textarea class="form-control dynamic-input" placeholder="Input here"></textarea>';
+            break;
+        case 'date':
+            newInput = '<input type="date" class="form-control dynamic-input">';
+            break;
+        case 'dropdown':
+            newInput = `<select class="form-control dynamic-input">
+                            <option value="one">One</option>
+                            <option value="two">Two</option>
+                        </select>`;
+            break;
+        default:
+            newInput = '<input type="text" class="form-control dynamic-input" placeholder="Input here">';
+    }
+    dynamicInputCell.innerHTML = newInput;
+}
 
 // Refactored initializeTableActions to work with the newly created table
 function initializeTableActions(table,data) {
