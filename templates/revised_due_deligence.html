@@ -6,8 +6,8 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto|Varela+Round">
-  <!-- <link rel="stylesheet" href="{{ url_for('static', filename='css/due-deligence.css') }}"> -->
-   <link rel="stylesheet" href="../static/css/due-deligence.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/due-deligence.css') }}">
+   <!-- <link rel="stylesheet" href="../static/css/due-deligence.css"> -->
 </head>
 <body>
 
@@ -28,8 +28,11 @@
             </li>
     </div>
     <div class="navbar-nav">
+        <!-- <li class="nav-item"> -->
+            <!-- <a class="nav-link" href="/templates/revised_due_deligence.html">Due Deligence</a> -->
+        <!-- </li> -->
         <li class="nav-item">
-            <a class="nav-link" href="#">Due Deligence</a>
+            <a class="nav-link" href="{{ url_for('due_deligence') }}">Due Deligence</a>
         </li>
     </div>
     
@@ -85,13 +88,13 @@
             </div>
             <div class="form-group assets-group count-group">
                 <label for="countData" style="display: inline;"> Data to be captured <span class="imp">*</span></label>
-                <input type="number" id="countData" placeholder="Enter columns" class="count-data px-2 py-2" >
+                <input type="number" id="countData" placeholder="Enter columns" class="count-data px-2 py-2" min="1">
             </div>
             <p class="count-error"></p>
             <div class="submit-div">
 
-              <button type="submit" class="btn btn-primary">Submit</button>
-              <button type="reset" class="btn btn-warning reset-btn">Reset</button>
+              <button type="submit" class="btn btn-primary">Proceed</button>
+              <button type="reset" class="btn btn-warning reset-btn" style="color: #1f1c1c;">Reset</button>
             </div>
         </form>
     </div>
@@ -106,6 +109,7 @@
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
   
   <!-- <script src="{{ url_for('static', filename='js/due-deligence.js') }}" ></script> -->
-   <script src="../static/js/revised_due_deligence.js"></script>
+   <script src="../static/js/revised_due_deligence.js" type="module"></script>
+   <!-- <script src="../static/js/due-deligence.js" ></script> -->
 </body>
 </html>

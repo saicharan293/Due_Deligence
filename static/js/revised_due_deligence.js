@@ -1,5 +1,6 @@
 
-let savedOptions = []; // Array to hold selected options
+// let savedOptions = []; 
+// Array to hold selected options
 
 function populateSubCategory() {
     const category = document.getElementById("category").value;
@@ -155,18 +156,6 @@ function showError(selector, message) {
   }
 
 
-document.getElementById("category").addEventListener("change", function () {
-    removeError('.department-error'); // Remove department error when the dropdown is changed
-});
-
-document.querySelector('.screen-name').addEventListener("input", function () {
-    removeError('.screen-error'); // Remove screen name error when the user starts typing
-});
-
-document.querySelector('.count-data').addEventListener("input", function () {
-    removeError('.count-error'); 
-});
-
 
 document.getElementById("evaluationForm").addEventListener("submit", function (event) {
     event.preventDefault();
@@ -198,6 +187,10 @@ document.querySelector(".reset-btn").addEventListener('click', function (event )
     removeError('.screen-error')
     document.querySelector("#evaluationForm").reset();
 })
+// Add an event listener for the reset button
+// Using event delegation for dynamically added reset button
+
+
 
 function formValidation(){
     const category = document.getElementById("customCategory").value.trim() || document.getElementById("category").value;
@@ -232,11 +225,12 @@ function formValidation(){
     return isValid;
 }
 
+let tableData = [];
 
 function tableCreation(tableName, count) {
     const tablesContainer = document.getElementById('tablesContainer');
     const newSection = document.createElement("div");
-    newSection.classList.add("mt-3", tableName);
+    newSection.classList.add( tableName);
     newSection.innerHTML = `
             <div class="table-title" style="padding-inline: 60px">
                 <div class="row">
@@ -250,13 +244,15 @@ function tableCreation(tableName, count) {
 
     const thead = document.createElement("thead");
     const headerRow = document.createElement("tr");
+
+    
+    const rowData = {};
     
     // Create columns with editable feature
     if (count > 0) {
         for (let i = 1; i <= count; i++) {
             const th = document.createElement("th");
             const columnText = `Column${i}`;
-
             // Make column name and add edit button as HTML
             th.innerHTML = `<span class="editable-column">${columnText}</span>
                 <a class="edit" title="Edit" data-toggle="tooltip" style="display: inline;">
@@ -275,23 +271,30 @@ function tableCreation(tableName, count) {
     const dataRow = document.createElement("tr");
 
     // First column: Dropdown for selecting input type
-    const inputTypeCell = document.createElement("td");
-    inputTypeCell.innerHTML = `
-        <select class="form-control input-type-selector">
-            <option value="select">Select</option>
-            <option value="textbox">Textbox</option>
-            <option value="textarea">Textarea</option>
-            <option value="date">Date</option>
-            <option value="dropdown">Dropdown</option>
-        </select>`;
-    dataRow.appendChild(inputTypeCell);
+    
 
-    for (let i = 1; i < count; i++) {
-        const dynamicInputCell = document.createElement("td");
-        dynamicInputCell.innerHTML = '';  // Initially empty
-        dataRow.appendChild(dynamicInputCell);
+    for (let i = 0; i < count; i++) {
+        const inputTypeCell = document.createElement("td");
+        const inputTypeSelector = document.createElement("select");
+        inputTypeSelector.className = "form-control input-type-selector";
+        
+        // Populate the dropdown
+        const options = ["select", "textbox", "textarea", "date", "dropdown"];
+        options.forEach(option => {
+            const opt = document.createElement("option");
+            opt.value = option;
+            opt.textContent = option.charAt(0).toUpperCase() + option.slice(1);
+            inputTypeSelector.appendChild(opt);
+        });
+
+        // Set up change event listener
+        inputTypeSelector.addEventListener('change', function () {
+            rowData[`Column${i + 1}`] = this.value; // Store the selected input type
+        });
+        
+        inputTypeCell.appendChild(inputTypeSelector);
+        dataRow.appendChild(inputTypeCell);
     }
-
     // Append the row to the table body
     tbody.appendChild(dataRow);
     newTable.appendChild(tbody);
@@ -300,20 +303,75 @@ function tableCreation(tableName, count) {
     newSection.appendChild(newTable);
     tablesContainer.appendChild(newSection);
 
-    // Add event listener to the dropdown to dynamically change the second column
-    inputTypeCell.querySelector('.input-type-selector').addEventListener('change', function () {
-        const selectedType = this.value;
-        if (selectedType === 'select') {
-            dynamicInputCell.innerHTML = '';  // Keep it empty if 'Select' is chosen
-        } else {
-            // updateSecondColumn(dynamicInputCell, selectedType);
-            for (let i = 1; i < count; i++) {
-                const cell = dataRow.cells[i]; // Get each cell from the second column onwards
-                updateSecondColumn(cell, selectedType);
-            }
+    const buttonsDiv = document.createElement('div');
+    buttonsDiv.className = "submit-table mt-3";  
+    // Add "mt-3" class for some margin on top
+    buttonsDiv.innerHTML = `
+        <button type="submit" class="btn btn-primary" id="save-table">Save</button>
+        <button type="reset" class="btn btn-warning" id="reset-table">Reset</button>
+        <button class="btn btn-info back-btn">Back</button>
+    `;
+    newSection.appendChild(buttonsDiv);
+    document.addEventListener('click', function (event) {
+        if (event.target && event.target.id === 'reset-table') {
+            console.log('Reset table');
+    
+            // Reset each input type selector back to "Select"
+            const inputTypeSelectors = newTable.querySelectorAll('.input-type-selector');
+            inputTypeSelectors.forEach(selector => {
+                selector.value = 'select'; // Reset to 'Select'
+            });
         }
     });
+
+    // Store row data in tableData array
+    tableData.push({ tableName, rowData });
 }
+
+
+document.getElementById("category").addEventListener("change", function () {
+    removeError('.department-error'); // Remove department error when the dropdown is changed
+});
+
+document.querySelector('.screen-name').addEventListener("input", function () {
+    removeError('.screen-error'); // Remove screen name error when the user starts typing
+});
+
+document.querySelector('.count-data').addEventListener("input", function () {
+    removeError('.count-error'); 
+});
+
+
+
+document.addEventListener('click', function (event) {
+    const columns = []
+    if (event.target && event.target.id === 'save-table') {
+        document.querySelectorAll('.editable-column').forEach(ele=>{
+            columns.push(ele.innerText)
+        })
+        tableData.push({columns})
+        console.log('rev data', tableData);
+        fetch('/submit-table-data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ tableData: tableData })
+        })
+        .then(response => {
+            if (response.ok) {
+                // Handle success if needed (optional)
+                console.log('Successfully submitted data');
+                window.location.href = '/due-deligence';
+
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+});
+
 
 // Function to make the column names editable
 function makeEditable(event) {
@@ -340,6 +398,9 @@ function makeEditable(event) {
     });
 }
 
+
+
+
 // Function to save the new column name
 function saveColumnName(columnText) {
     columnText.contentEditable = "false"; // Disable contentEditable
@@ -347,29 +408,31 @@ function saveColumnName(columnText) {
 }
 
 // Function to update the second column based on the selected input type
-function updateSecondColumn(dynamicInputCell, selectedType) {
-    let newInput;
-    switch (selectedType) {
-        case 'textbox':
-            newInput = '<input type="text" class="form-control dynamic-input" placeholder="Input here">';
-            break;
-        case 'textarea':
-            newInput = '<textarea class="form-control dynamic-input" placeholder="Input here"></textarea>';
-            break;
-        case 'date':
-            newInput = '<input type="date" class="form-control dynamic-input">';
-            break;
-        case 'dropdown':
-            newInput = `<select class="form-control dynamic-input">
-                            <option value="one">One</option>
-                            <option value="two">Two</option>
-                        </select>`;
-            break;
-        default:
-            newInput = '<input type="text" class="form-control dynamic-input" placeholder="Input here">';
-    }
-    dynamicInputCell.innerHTML = newInput;
-}
+// function updateCellWithSelectedInput(dynamicInputCell, selectedType) {
+//     let newInput;
+//     switch (selectedType) {
+//         case 'textbox':
+//             newInput = '<input type="text" class="form-control dynamic-input" placeholder="Input here">';
+//             break;
+//         case 'textarea':
+//             newInput = '<textarea class="form-control dynamic-input" placeholder="Input here"></textarea>';
+//             break;
+//         case 'date':
+//             newInput = '<input type="date" class="form-control dynamic-input">';
+//             break;
+//         case 'dropdown':
+//             newInput = `<select class="form-control dynamic-input">
+//                             <option value="one">One</option>
+//                             <option value="two">Two</option>
+//                         </select>`;
+//             break;
+//         default:
+//             newInput = '<input type="text" class="form-control dynamic-input" placeholder="Input here">';
+//     }
+//     dynamicInputCell.innerHTML = newInput;
+// }
+
+
 
 // Refactored initializeTableActions to work with the newly created table
 function initializeTableActions(table,data) {

@@ -44,9 +44,19 @@ body {
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
-.submit-div{
-  text-align: center;
-  margin-top: 10px;
+.submit-div {
+  /* text-align: center; */
+  margin-top: 29px;
+  display: flex;
+  justify-content: space-between;
+  /* align-items: center; */
+}
+
+.submit-table{
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+  width: 94%;
 }
 .div-btn-add{
   position: relative;
@@ -151,14 +161,14 @@ table {
   max-width: 60rem;
 }
 
-#evaluationForm{
-
-    outline: 1px solid #dbdcdd;
-    padding: 15px;
-    border: none;
-    border-radius: 5px;
-    /* max-width: 90%; */
-
+#evaluationForm {
+  outline: 1px solid #dbdcdd;
+  padding: 23px;
+  border: none;
+  border-radius: 5px;
+  margin-top: 18px;
+  /* max-width: 90%; */
+  height: 90%;
 }
 .edit i {
   color: #FFC107;
@@ -171,9 +181,12 @@ table {
 }
 
 .table-title {
-  padding-inline: 60px;
+  /* padding-inline: 60px; */
   display: flex;
   margin: 0 0 10px;
+  justify-content: space-around;
+  /* background-color: greenyellow; */
+  align-items: center;
 }
 .table-title h2 {
   margin: 6px 0 0;
@@ -182,7 +195,7 @@ table {
 .col-2{
   display: flex;
 }
-.table-title .add-new,.delete-table {
+.table-title .add-new,.back-home {
   float: right;
   height: 30px;
   font-weight: bold;
@@ -195,9 +208,9 @@ table {
 .table-title .delete-table{
   min-width: 110px;
 }
-.row{
+/* .row{
   padding-inline: 35px;
-}
+} */
 .table-title .add-new i {
   margin-right: 4px;
 }
